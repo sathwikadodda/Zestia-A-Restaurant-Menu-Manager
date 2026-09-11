@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Navbar from './components/Navbar.jsx';
-import Hero from './components/Hero.jsx';
 import SearchBar from './components/SearchBar.jsx';
 import CategoryFilter from './components/CategoryFilter.jsx';
 import FoodCard from './components/FoodCard.jsx';
@@ -11,11 +10,29 @@ import EmptyState from './components/EmptyState.jsx';
 import LoadingState from './components/LoadingState.jsx';
 import ErrorState from './components/ErrorState.jsx';
 import Toast from './components/Toast.jsx';
+import TableSelector, { isValidTable } from './components/TableSelector.jsx';
 import { CATEGORIES, fetchMenuData } from './data/menuData.js';
 import { useCart } from './hooks/useCart.js';
 import { ShoppingBag, Sparkles, Utensils } from 'lucide-react';
 
+const TABLE_STORAGE_KEY = 'zestia-table-number';
+
 export default function App() {
+  // Table state initialized with localStorage persistence (defaults to Table 01)
+  const [tableNumber, setTableNumber] = useState(() => {
+    try {
+      const stored = localStorage.getItem(TABLE_STORAGE_KEY);
+      if (isValidTable(stored)) {
+        return stored;
+      }
+    } catch (e) {
+      console.warn('Failed to parse table number from localStorage:', e);
+    }
+    return 'Table 01';
+  });
+
+  const [isTableSelectorOpen, setIsTableSelectorOpen] = useState(false);
+
   // Data loading state
   const [menu, setMenu] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -80,11 +97,32 @@ export default function App() {
     showToast(`Added ${quantity > 1 ? `${quantity}x ` : ''}${item.name} to cart`);
   };
 
+  // Handle Table Selection
+  const handleSelectTable = (selectedTable) => {
+    if (isValidTable(selectedTable)) {
+      setTableNumber(selectedTable);
+      try {
+        localStorage.setItem(TABLE_STORAGE_KEY, selectedTable);
+      } catch (e) {
+        console.warn('Failed to persist table number:', e);
+      }
+      setIsTableSelectorOpen(false);
+      showToast(`Dining at ${selectedTable}`);
+    }
+  };
+
   // Order Placement flow
   const handlePlaceOrder = () => {
+    if (!isValidTable(tableNumber)) {
+      showToast('Please select your table before placing the order.');
+      setIsTableSelectorOpen(true);
+      return;
+    }
+
     const generatedId = `#ZST-${Math.floor(1000 + Math.random() * 9000)}`;
     const snapshot = {
       orderId: generatedId,
+      tableNumber,
       items: [...cartItems],
       subtotal,
       tax,
@@ -153,13 +191,12 @@ export default function App() {
         cartCount={totalItemsCount}
         cartTotal={grandTotal}
         onOpenCart={() => setIsCartOpen(true)}
+        currentTable={tableNumber}
+        onOpenTableSelector={() => setIsTableSelectorOpen(true)}
       />
 
-      {/* Hero Welcome Banner */}
-      <Hero />
-
-      {/* Main Menu Section */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      {/* Main Menu Section - Food Menu Directly Accessible */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-6 space-y-5">
         
         {/* Controls Section: Search Bar & Veg Filter */}
         <section aria-label="Search and Filter">
@@ -263,17 +300,14 @@ export default function App() {
       )}
 
       {/* Footer */}
-      <footer className="mt-auto border-t border-champagne-200/80 bg-champagne-100/50 py-8 px-4 text-center text-xs text-espresso-600 space-y-2">
-        <div className="flex items-center justify-center gap-2">
-          <span className="font-serif font-bold text-base tracking-wider text-espresso-900">ZESTIA</span>
+      <footer className="mt-auto border-t border-champagne-200/80 bg-champagne-100/40 py-6 px-4 text-center text-xs text-espresso-600">
+        <div className="flex items-center justify-center gap-2 font-medium">
+          <span className="font-serif font-bold tracking-wider text-espresso-900">ZESTIA</span>
           <span className="text-gold-600">•</span>
           <span>Scan. Browse. Dine.</span>
         </div>
-        <p className="max-w-md mx-auto text-espresso-500">
-          Handcrafted culinary experience. Prepared with fresh artisanal ingredients.
-        </p>
-        <p className="text-[11px] text-espresso-400 pt-2">
-          © {new Date().getFullYear()} ZESTIA Restaurant. All rights reserved.
+        <p className="text-[11px] text-espresso-400 mt-1">
+          © {new Date().getFullYear()} ZESTIA Restaurant
         </p>
       </footer>
 
@@ -297,6 +331,11 @@ export default function App() {
         tax={tax}
         grandTotal={grandTotal}
         onPlaceOrder={handlePlaceOrder}
+        currentTable={tableNumber}
+        onRequestSelectTable={() => {
+          showToast('Please select your table before placing the order.');
+          setIsTableSelectorOpen(true);
+        }}
       />
 
       {orderDetails && (
@@ -305,6 +344,13 @@ export default function App() {
           onBackToMenu={handleBackToMenu}
         />
       )}
+
+      <TableSelector
+        isOpen={isTableSelectorOpen}
+        currentTable={tableNumber}
+        onSelectTable={handleSelectTable}
+        onClose={() => setIsTableSelectorOpen(false)}
+      />
 
       <Toast
         visible={toast.visible}

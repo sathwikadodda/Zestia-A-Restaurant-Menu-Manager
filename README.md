@@ -26,6 +26,8 @@
 - **Asynchronous Data Simulation**: Simulated network latency (650ms) showcasing skeleton shimmer loading cards, with complete error recovery and retry capability.
 - **Hackathon-Grade Mobile Responsiveness**: Precision-crafted for mobile devices down to 375px width (iPhone SE standard), featuring a floating bottom cart action bar, zero horizontal scroll, and touch targets $\ge 44\text{px}$.
 - **Double-Click & Rapid-Tap Protection**: Built-in state debouncing and loading spinners preventing accidental duplicate orders or erratic cart entries.
+- **Interactive Table Number Selector**: Welcoming initial check-in prompt for first visits with selectable options from Table 01 to Table 20. Stored in `localStorage` under `zestia-table-number` with automatic recovery on page refresh. Interactive header pill allows changing tables at any time with instant synchronization.
+- **Order Table Validation**: Validates table selection before order dispatch and presents the table number directly on the final confirmation ticket.
 - **Accessible & Semantic HTML**: Proper ARIA landmarks, `role="dialog"`, accessible button labels, and keyboard ESC handling for modals.
 
 ---
@@ -52,23 +54,23 @@ Zestia/
 ├── postcss.config.js           # PostCSS Tailwind plugins
 ├── src/
 │   ├── main.jsx                # Application root mount
-│   ├── App.jsx                 # Top-level state coordinator (menu, search, cart, modals)
+│   ├── App.jsx                 # Top-level state coordinator (menu, search, cart, modals, table)
 │   ├── index.css               # Global typography, animations, scrollbars
 │   ├── data/
 │   │   └── menuData.js         # 21 realistic dishes across 7 categories + async fetch simulator
 │   ├── hooks/
 │   │   └── useCart.js          # Encapsulated cart hook with localStorage sync & totals calculation
 │   └── components/
-│       ├── Navbar.jsx          # Sticky header with ZESTIA branding and live cart badge
-│       ├── Hero.jsx            # Welcoming dining ambiance banner with culinary badges
+│       ├── Navbar.jsx          # Streamlined header with ZESTIA branding, table badge & live cart
 │       ├── SearchBar.jsx       # Instant search input with clear button and veg toggle
 │       ├── CategoryFilter.jsx  # Horizontal scrollable category pill bar with counts
 │       ├── FoodCard.jsx        # Dish card with veg/non-veg indicator, price, and quick add
 │       ├── FoodDetails.jsx     # Detail modal with high-res photo, prep time, spice level, qty stepper
-│       ├── Cart.jsx            # Slide-over cart drawer with bill breakdown & checkout trigger
+│       ├── Cart.jsx            # Slide-over cart drawer with table validation & checkout trigger
 │       ├── CartItem.jsx        # Cart line item with thumbnail, quantity buttons, and removal
-│       ├── OrderConfirmation.jsx # Receipt modal with generated order ID & kitchen status
-│       ├── Toast.jsx           # Floating notification feedback for cart interactions
+│       ├── TableSelector.jsx   # Dedicated table selector modal
+│       ├── OrderConfirmation.jsx # Receipt modal with generated order ID, table number & kitchen status
+│       ├── Toast.jsx           # Floating notification feedback for cart & table interactions
 │       ├── EmptyState.jsx      # Reusable empty states for search and empty categories
 │       ├── LoadingState.jsx    # Skeleton cards displayed during async menu loading
 │       └── ErrorState.jsx      # Friendly error view with retry button

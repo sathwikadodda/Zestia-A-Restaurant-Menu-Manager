@@ -12,7 +12,9 @@ export default function Cart({
   subtotal,
   tax,
   grandTotal,
-  onPlaceOrder
+  onPlaceOrder,
+  currentTable,
+  onRequestSelectTable
 }) {
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -20,6 +22,15 @@ export default function Cart({
 
   const handleOrderClick = async () => {
     if (isProcessing || cartItems.length === 0) return;
+
+    // Verify valid table number exists
+    if (!currentTable) {
+      if (onRequestSelectTable) {
+        onRequestSelectTable();
+      }
+      return;
+    }
+
     setIsProcessing(true);
 
     // Simulate order placement processing (800ms)
@@ -48,9 +59,16 @@ export default function Cart({
               <ShoppingBag className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="font-serif text-lg font-bold text-espresso-900">
-                Your Selection
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 className="font-serif text-lg font-bold text-espresso-900">
+                  Your Selection
+                </h2>
+                {currentTable && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-champagne-200 text-espresso-900 border border-champagne-300/80">
+                    🍽️ {currentTable}
+                  </span>
+                )}
+              </div>
               <p className="text-[11px] text-espresso-600">
                 {cartItems.length} {cartItems.length === 1 ? 'item' : 'items'} in order
               </p>
@@ -116,6 +134,12 @@ export default function Cart({
           <div className="p-4 sm:p-5 border-t border-champagne-200/90 bg-champagne-100/40 space-y-3">
             {/* Bill breakdown */}
             <div className="space-y-1.5 text-xs">
+              <div className="flex items-center justify-between text-espresso-700">
+                <span>Dining Table</span>
+                <span className="font-bold text-gold-700">
+                  {currentTable ? `🍽️ ${currentTable}` : 'None Selected'}
+                </span>
+              </div>
               <div className="flex items-center justify-between text-espresso-700">
                 <span>Items Subtotal</span>
                 <span className="font-medium text-espresso-900">₹{subtotal}</span>

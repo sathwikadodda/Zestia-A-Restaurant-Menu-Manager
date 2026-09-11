@@ -4,7 +4,7 @@ import { CheckCircle2, Clock, UtensilsCrossed, ArrowRight } from 'lucide-react';
 export default function OrderConfirmation({ orderDetails, onBackToMenu }) {
   if (!orderDetails) return null;
 
-  const { orderId, items, subtotal, tax, grandTotal, timestamp } = orderDetails;
+  const { orderId, tableNumber, items, subtotal, tax, grandTotal, timestamp } = orderDetails;
 
   return (
     <div
@@ -20,15 +20,24 @@ export default function OrderConfirmation({ orderDetails, onBackToMenu }) {
           <CheckCircle2 className="w-10 h-10 sm:w-12 sm:h-12" />
         </div>
 
-        {/* Title & Subtitle */}
-        <span className="inline-block px-3 py-1 rounded-full bg-champagne-200/70 text-gold-700 text-xs font-bold uppercase tracking-wider mb-2">
-          Order Confirmed
-        </span>
+        {/* Title & Subtitle with Table Badge */}
+        <div className="flex flex-wrap items-center justify-center gap-2 mb-2">
+          <span className="inline-block px-3 py-1 rounded-full bg-champagne-200/70 text-gold-700 text-xs font-bold uppercase tracking-wider">
+            Order Confirmed!
+          </span>
+          {tableNumber && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gold-500 text-espresso-950 text-xs font-bold uppercase tracking-wider shadow-sm">
+              <span role="img" aria-label="Table">🍽️</span>
+              <span>{tableNumber}</span>
+            </span>
+          )}
+        </div>
+
         <h2 id="order-success-title" className="font-serif text-2xl sm:text-3xl font-bold text-espresso-900">
           Thank you for dining with Zestia
         </h2>
         <p className="mt-1.5 text-xs sm:text-sm text-espresso-600 max-w-sm mx-auto">
-          Your culinary order has been dispatched to our artisanal kitchen and preparation has commenced.
+          Your culinary order for <strong className="font-semibold text-espresso-900">{tableNumber || 'your table'}</strong> has been dispatched to our artisanal kitchen and preparation has commenced.
         </p>
 
         {/* Order Meta Ticket */}
@@ -40,9 +49,17 @@ export default function OrderConfirmation({ orderDetails, onBackToMenu }) {
                 {orderId}
               </span>
             </div>
+            {tableNumber && (
+              <div className="text-center">
+                <span className="block text-[10px] uppercase font-bold text-espresso-500">Table</span>
+                <span className="font-serif text-base font-bold text-espresso-950">
+                  {tableNumber}
+                </span>
+              </div>
+            )}
             <div className="text-right">
               <span className="block text-[10px] uppercase font-bold text-espresso-500">Est. Serving Time</span>
-              <span className="text-xs font-bold text-gold-700 flex items-center gap-1">
+              <span className="text-xs font-bold text-gold-700 flex items-center gap-1 justify-end">
                 <Clock className="w-3.5 h-3.5" />
                 18 - 22 mins
               </span>
