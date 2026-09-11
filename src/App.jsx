@@ -18,7 +18,7 @@ import { ShoppingBag, Sparkles, Utensils } from 'lucide-react';
 const TABLE_STORAGE_KEY = 'zestia-table-number';
 
 export default function App() {
-  // Table state initialized with localStorage persistence (defaults to Table 01)
+  // Table state initialized with localStorage persistence (no auto-selection on first visit)
   const [tableNumber, setTableNumber] = useState(() => {
     try {
       const stored = localStorage.getItem(TABLE_STORAGE_KEY);
@@ -28,7 +28,7 @@ export default function App() {
     } catch (e) {
       console.warn('Failed to parse table number from localStorage:', e);
     }
-    return 'Table 01';
+    return null;
   });
 
   const [isTableSelectorOpen, setIsTableSelectorOpen] = useState(false);

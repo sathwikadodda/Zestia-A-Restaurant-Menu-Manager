@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, ShoppingBag, ArrowRight, Loader2, Sparkles } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, ShoppingBag, ArrowRight, Loader2, Sparkles, AlertCircle } from 'lucide-react';
 import CartItem from './CartItem.jsx';
 
 export default function Cart({
@@ -17,6 +17,14 @@ export default function Cart({
   onRequestSelectTable
 }) {
   const [isProcessing, setIsProcessing] = useState(false);
+  const [validationError, setValidationError] = useState('');
+
+  // Clear validation error when a table is selected
+  React.useEffect(() => {
+    if (currentTable) {
+      setValidationError('');
+    }
+  }, [currentTable]);
 
   if (!isOpen) return null;
 
@@ -25,12 +33,14 @@ export default function Cart({
 
     // Verify valid table number exists
     if (!currentTable) {
+      setValidationError('Please select your table before placing the order.');
       if (onRequestSelectTable) {
         onRequestSelectTable();
       }
       return;
     }
 
+    setValidationError('');
     setIsProcessing(true);
 
     // Simulate order placement processing (800ms)
@@ -156,6 +166,23 @@ export default function Cart({
                 <span className="font-serif text-xl text-espresso-950">₹{grandTotal}</span>
               </div>
             </div>
+
+            {/* Validation alert if no table is selected */}
+            {validationError && (
+              <div className="p-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs font-semibold flex items-center justify-between gap-2 animate-fade-in shadow-xs">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span className="truncate">{validationError}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={onRequestSelectTable}
+                  className="underline font-bold text-gold-700 hover:text-espresso-950 shrink-0 cursor-pointer"
+                >
+                  Select
+                </button>
+              </div>
+            )}
 
             {/* Order Placement Button */}
             <button

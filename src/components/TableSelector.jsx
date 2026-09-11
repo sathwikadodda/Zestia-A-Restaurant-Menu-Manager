@@ -16,11 +16,13 @@ export default function TableSelector({
   onSelectTable,
   onClose
 }) {
-  const [selected, setSelected] = useState(currentTable || 'Table 01');
+  const [selected, setSelected] = useState(currentTable || '');
 
   useEffect(() => {
     if (currentTable && isValidTable(currentTable)) {
       setSelected(currentTable);
+    } else {
+      setSelected('');
     }
   }, [currentTable, isOpen]);
 
@@ -89,6 +91,9 @@ export default function TableSelector({
               onChange={(e) => setSelected(e.target.value)}
               className="w-full appearance-none px-4 py-2.5 rounded-xl bg-champagne-100/80 hover:bg-champagne-100 focus:bg-cream-50 border border-champagne-300 text-espresso-900 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-gold-500/50 transition-all cursor-pointer pr-10"
             >
+              <option value="" disabled>
+                — Select Table (01 - 20) —
+              </option>
               {TABLE_OPTIONS.map((table) => (
                 <option key={table} value={table} className="text-espresso-900 bg-cream-50">
                   {table}
@@ -114,7 +119,7 @@ export default function TableSelector({
             <button
               type="submit"
               disabled={!isValidTable(selected)}
-              className="flex-1 py-2.5 px-4 rounded-xl bg-gold-500 hover:bg-gold-600 text-espresso-950 hover:text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer active:scale-98 disabled:opacity-60"
+              className="flex-1 py-2.5 px-4 rounded-xl bg-gold-500 hover:bg-gold-600 disabled:bg-champagne-200 disabled:text-espresso-400 text-espresso-950 hover:text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Check className="w-3.5 h-3.5" />
               <span>Confirm</span>
