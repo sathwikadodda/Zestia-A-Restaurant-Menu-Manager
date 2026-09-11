@@ -1,7 +1,7 @@
 import React from 'react';
-import { CheckCircle2, Clock, UtensilsCrossed, ArrowRight } from 'lucide-react';
+import { CheckCircle2, Clock, UtensilsCrossed, ArrowRight, Receipt } from 'lucide-react';
 
-export default function OrderConfirmation({ orderDetails, onBackToMenu }) {
+export default function OrderConfirmation({ orderDetails, onBackToMenu, onRequestBill }) {
   if (!orderDetails) return null;
 
   const { orderId, tableNumber, items, subtotal, tax, grandTotal, timestamp } = orderDetails;
@@ -98,16 +98,27 @@ export default function OrderConfirmation({ orderDetails, onBackToMenu }) {
           </div>
         </div>
 
-        {/* Back to Menu Action */}
-        <div className="mt-6">
+        {/* Actions */}
+        <div className="mt-6 space-y-2.5">
           <button
             type="button"
             onClick={onBackToMenu}
             className="w-full py-3.5 px-6 rounded-2xl bg-espresso-900 hover:bg-gold-600 text-cream-50 hover:text-espresso-950 font-bold text-sm flex items-center justify-center gap-2 shadow-md transition-all duration-200 cursor-pointer active:scale-98"
           >
-            <span>Back to Menu</span>
+            <span>Order More / Back to Menu</span>
             <ArrowRight className="w-4 h-4" />
           </button>
+
+          {onRequestBill && (
+            <button
+              type="button"
+              onClick={onRequestBill}
+              className="w-full py-2.5 px-4 rounded-2xl bg-champagne-100 hover:bg-champagne-200 text-espresso-900 border border-champagne-300 font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-98 shadow-xs"
+            >
+              <Receipt className="w-3.5 h-3.5 text-gold-700" />
+              <span>Request Bill for {tableNumber}</span>
+            </button>
+          )}
         </div>
 
       </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ShoppingBag, ArrowRight, Loader2, Sparkles, AlertCircle } from 'lucide-react';
+import { X, ShoppingBag, ArrowRight, Loader2, Sparkles, AlertCircle, Receipt } from 'lucide-react';
 import CartItem from './CartItem.jsx';
 
 export default function Cart({
@@ -14,7 +14,12 @@ export default function Cart({
   grandTotal,
   onPlaceOrder,
   currentTable,
-  onRequestSelectTable
+  onRequestSelectTable,
+  onRequestBill,
+  hasActiveSession = false,
+  sessionOrdersCount = 0,
+  sessionTotal = 0,
+  isRequestingBill = false
 }) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [validationError, setValidationError] = useState('');
@@ -109,24 +114,71 @@ export default function Cart({
         {/* Cart Items List or Empty State */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {cartItems.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-3">
-              <div className="w-16 h-16 rounded-full bg-champagne-100 border border-champagne-200 flex items-center justify-center text-espresso-400">
-                <ShoppingBag className="w-7 h-7" />
+            sessionOrdersCount > 0 && currentTable ? (
+              <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-3.5">
+                <div className="w-14 h-14 rounded-2xl bg-champagne-100 border border-gold-400/40 flex items-center justify-center text-gold-700 shadow-subtle">
+                  <Receipt className="w-7 h-7" />
+                </div>
+                <div>
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-champagne-200/80 text-[10px] font-bold text-gold-800 uppercase tracking-wider mb-1">
+                    Active Dining Session
+                  </div>
+                  <h3 className="font-serif text-lg font-bold text-espresso-900">
+                    {currentTable}
+                  </h3>
+                  <p className="text-xs text-espresso-600 mt-1 max-w-xs leading-relaxed">
+                    {sessionOrdersCount} {sessionOrdersCount === 1 ? 'order round' : 'order rounds'} placed for this table (Session Total: <strong>₹{sessionTotal}</strong>).
+                  </p>
+                </div>
+
+                <div className="w-full max-w-xs space-y-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={onRequestBill}
+                    disabled={isRequestingBill}
+                    className="w-full py-3 px-4 rounded-xl bg-gold-500 hover:bg-gold-600 disabled:opacity-60 text-espresso-950 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer active:scale-98"
+                  >
+                    {isRequestingBill ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin text-espresso-950" />
+                        <span>Requesting Bill...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Receipt className="w-4 h-4" />
+                        <span>Request Bill ({currentTable})</span>
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="w-full py-2.5 px-4 rounded-xl bg-champagne-100 hover:bg-champagne-200 text-espresso-800 font-semibold text-xs transition-colors cursor-pointer"
+                  >
+                    Order More Items
+                  </button>
+                </div>
               </div>
-              <h3 className="font-serif text-lg font-bold text-espresso-900">
-                Your cart is empty
-              </h3>
-              <p className="text-xs text-espresso-600 max-w-xs leading-relaxed">
-                Explore our curated culinary creations and add your favorite dishes to begin dining.
-              </p>
-              <button
-                type="button"
-                onClick={onClose}
-                className="mt-2 px-5 py-2.5 rounded-xl bg-espresso-900 text-cream-50 hover:bg-gold-600 hover:text-espresso-950 font-semibold text-xs transition-all shadow-subtle cursor-pointer"
-              >
-                Explore Menu
-              </button>
-            </div>
+            ) : (
+              <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-3">
+                <div className="w-16 h-16 rounded-full bg-champagne-100 border border-champagne-200 flex items-center justify-center text-espresso-400">
+                  <ShoppingBag className="w-7 h-7" />
+                </div>
+                <h3 className="font-serif text-lg font-bold text-espresso-900">
+                  Your cart is empty
+                </h3>
+                <p className="text-xs text-espresso-600 max-w-xs leading-relaxed">
+                  Explore our curated culinary creations and add your favorite dishes to begin dining.
+                </p>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="mt-2 px-5 py-2.5 rounded-xl bg-espresso-900 text-cream-50 hover:bg-gold-600 hover:text-espresso-950 font-semibold text-xs transition-all shadow-subtle cursor-pointer"
+                >
+                  Explore Menu
+                </button>
+              </div>
+            )
           ) : (
             cartItems.map((item) => (
               <CartItem
@@ -188,7 +240,7 @@ export default function Cart({
             <button
               type="button"
               onClick={handleOrderClick}
-              disabled={isProcessing || cartItems.length === 0}
+              disabled={isProcessing || isRequestingBill || cartItems.length === 0}
               className="w-full py-3.5 px-4 rounded-2xl bg-gold-500 hover:bg-gold-600 disabled:opacity-60 text-espresso-950 font-bold text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer active:scale-98"
             >
               {isProcessing ? (
@@ -203,6 +255,28 @@ export default function Cart({
                 </>
               )}
             </button>
+
+            {/* Request Bill Button (when active session and table exist) */}
+            {hasActiveSession && currentTable && (
+              <button
+                type="button"
+                onClick={onRequestBill}
+                disabled={isRequestingBill || isProcessing}
+                className="w-full py-2.5 px-4 rounded-2xl bg-champagne-100 hover:bg-champagne-200/90 border border-champagne-300 text-espresso-900 font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-98 shadow-xs disabled:opacity-50"
+              >
+                {isRequestingBill ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-espresso-950" />
+                    <span>Requesting Bill...</span>
+                  </>
+                ) : (
+                  <>
+                    <Receipt className="w-3.5 h-3.5 text-gold-700" />
+                    <span>Request Bill ({currentTable})</span>
+                  </>
+                )}
+              </button>
+            )}
 
             <p className="text-[11px] text-center text-espresso-500 font-medium">
               Immediate kitchen preparation upon order placement

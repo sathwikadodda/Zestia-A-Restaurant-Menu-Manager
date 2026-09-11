@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Minus, Clock, Flame, Check } from 'lucide-react';
 
-export default function FoodDetails({ item, onClose, onAddToCart }) {
-  const [quantity, setQuantity] = useState(1);
+export default function FoodDetails({ item, inCartQuantity = 0, onClose, onAddToCart }) {
+  const maxAddable = Math.max(0, 20 - inCartQuantity);
+  const [quantity, setQuantity] = useState(() => Math.min(1, maxAddable));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAdded, setIsAdded] = useState(false);
 
-  // Reset quantity when selected item changes
+  // Reset quantity when selected item or inCartQuantity changes
   useEffect(() => {
-    setQuantity(1);
+    setQuantity(maxAddable > 0 ? 1 : 0);
     setIsAdded(false);
-  }, [item]);
+  }, [item, maxAddable]);
 
   // Handle ESC key press to close modal
   useEffect(() => {
@@ -23,11 +24,11 @@ export default function FoodDetails({ item, onClose, onAddToCart }) {
 
   if (!item) return null;
 
-  const handleIncrement = () => setQuantity(prev => Math.min(prev + 1, 20));
+  const handleIncrement = () => setQuantity(prev => Math.min(prev + 1, maxAddable));
   const handleDecrement = () => setQuantity(prev => Math.max(prev - 1, 1));
 
   const handleAddToCart = () => {
-    if (isSubmitting) return;
+    if (isSubmitting || maxAddable <= 0 || quantity <= 0) return;
     setIsSubmitting(true);
     onAddToCart(item, quantity);
     setIsAdded(true);
@@ -38,7 +39,7 @@ export default function FoodDetails({ item, onClose, onAddToCart }) {
     }, 600);
   };
 
-  const totalPrice = item.price * quantity;
+  const totalPrice = item.price * (quantity || 1);
 
   return (
     <div
@@ -142,62 +143,76 @@ export default function FoodDetails({ item, onClose, onAddToCart }) {
           </div>
 
           {/* Quantity Stepper & Add to Cart Footer */}
-          <div className="pt-4 border-t border-champagne-200/80 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-            
-            {/* Quantity Selector */}
-            <div className="flex items-center justify-between sm:justify-start gap-3 bg-champagne-100/80 border border-champagne-300/80 rounded-2xl p-1.5">
-              <span className="text-xs font-semibold text-espresso-600 pl-2 sm:hidden">
-                Quantity
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleDecrement}
-                  disabled={quantity <= 1}
-                  aria-label="Decrease quantity"
-                  className="w-8 h-8 rounded-xl bg-cream-50 hover:bg-cream-100 disabled:opacity-40 text-espresso-800 flex items-center justify-center border border-champagne-300/60 transition-all cursor-pointer disabled:cursor-not-allowed"
-                >
-                  <Minus className="w-3.5 h-3.5" />
-                </button>
-                <span className="font-bold text-sm text-espresso-900 w-6 text-center">
-                  {quantity}
+          <div className="pt-4 border-t border-champagne-200/80 space-y-2">
+            {inCartQuantity > 0 && (
+              <div className="flex items-center justify-between text-xs text-espresso-600 px-1">
+                <span>In cart: <strong className="font-bold text-espresso-900">{inCartQuantity}</strong></span>
+                <span className="text-[11px] font-semibold text-gold-700 bg-champagne-200/80 px-2 py-0.5 rounded-full">
+                  {maxAddable > 0 ? `Can add up to ${maxAddable} more (Max 20)` : 'Max limit (20) reached'}
                 </span>
-                <button
-                  type="button"
-                  onClick={handleIncrement}
-                  disabled={quantity >= 20}
-                  aria-label="Increase quantity"
-                  className="w-8 h-8 rounded-xl bg-cream-50 hover:bg-cream-100 disabled:opacity-40 text-espresso-800 flex items-center justify-center border border-champagne-300/60 transition-all cursor-pointer disabled:cursor-not-allowed"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                </button>
               </div>
-            </div>
+            )}
 
-            {/* Submit Add to Cart Button */}
-            <button
-              type="button"
-              onClick={handleAddToCart}
-              disabled={isSubmitting}
-              className={`flex-1 py-3 px-5 rounded-2xl font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-98 disabled:opacity-75 ${
-                isAdded
-                  ? 'bg-emerald-600 text-white'
-                  : 'bg-gold-500 hover:bg-gold-600 text-espresso-950 hover:text-white'
-              }`}
-            >
-              {isAdded ? (
-                <>
-                  <Check className="w-4 h-4" />
-                  <span>Added to Cart!</span>
-                </>
-              ) : (
-                <>
-                  <span>Add {quantity > 1 ? `(${quantity})` : ''} to Cart</span>
-                  <span className="opacity-60">•</span>
-                  <span>₹{totalPrice}</span>
-                </>
-              )}
-            </button>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              {/* Quantity Selector */}
+              <div className="flex items-center justify-between sm:justify-start gap-3 bg-champagne-100/80 border border-champagne-300/80 rounded-2xl p-1.5">
+                <span className="text-xs font-semibold text-espresso-600 pl-2 sm:hidden">
+                  Quantity
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleDecrement}
+                    disabled={quantity <= 1 || maxAddable <= 0}
+                    aria-label="Decrease quantity"
+                    className="w-8 h-8 rounded-xl bg-cream-50 hover:bg-cream-100 disabled:opacity-40 text-espresso-800 flex items-center justify-center border border-champagne-300/60 transition-all cursor-pointer disabled:cursor-not-allowed"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="font-bold text-sm text-espresso-900 w-6 text-center">
+                    {maxAddable === 0 ? 0 : quantity}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleIncrement}
+                    disabled={quantity >= maxAddable || maxAddable <= 0}
+                    aria-label="Increase quantity"
+                    className="w-8 h-8 rounded-xl bg-cream-50 hover:bg-cream-100 disabled:opacity-40 text-espresso-800 flex items-center justify-center border border-champagne-300/60 transition-all cursor-pointer disabled:cursor-not-allowed"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Submit Add to Cart Button */}
+              <button
+                type="button"
+                onClick={handleAddToCart}
+                disabled={isSubmitting || maxAddable <= 0}
+                className={`flex-1 py-3 px-5 rounded-2xl font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-98 disabled:opacity-75 disabled:cursor-not-allowed ${
+                  isAdded
+                    ? 'bg-emerald-600 text-white'
+                    : maxAddable <= 0
+                    ? 'bg-champagne-200/90 text-espresso-500 border border-champagne-300'
+                    : 'bg-gold-500 hover:bg-gold-600 text-espresso-950 hover:text-white'
+                }`}
+              >
+                {isAdded ? (
+                  <>
+                    <Check className="w-4 h-4" />
+                    <span>Added to Cart!</span>
+                  </>
+                ) : maxAddable <= 0 ? (
+                  <span>Max Limit (20) Reached</span>
+                ) : (
+                  <>
+                    <span>Add {quantity > 1 ? `(${quantity})` : ''} to Cart</span>
+                    <span className="opacity-60">•</span>
+                    <span>₹{totalPrice}</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>

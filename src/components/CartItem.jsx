@@ -47,26 +47,35 @@ export default function CartItem({ item, onUpdateQuantity, onRemove }) {
 
         {/* Quantity Controls & Line Total */}
         <div className="flex items-center justify-between mt-2 pt-1 border-t border-champagne-200/60">
-          <div className="flex items-center gap-1.5 bg-cream-50 border border-champagne-300/80 rounded-lg p-0.5">
-            <button
-              type="button"
-              onClick={() => onUpdateQuantity(item.id, -1)}
-              aria-label={`Decrease quantity of ${item.name}`}
-              className="w-6 h-6 rounded-md hover:bg-champagne-200 text-espresso-800 flex items-center justify-center transition-colors cursor-pointer"
-            >
-              <Minus className="w-3 h-3" />
-            </button>
-            <span className="text-xs font-bold text-espresso-900 w-5 text-center">
-              {item.quantity}
-            </span>
-            <button
-              type="button"
-              onClick={() => onUpdateQuantity(item.id, 1)}
-              aria-label={`Increase quantity of ${item.name}`}
-              className="w-6 h-6 rounded-md hover:bg-champagne-200 text-espresso-800 flex items-center justify-center transition-colors cursor-pointer"
-            >
-              <Plus className="w-3 h-3" />
-            </button>
+          <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 bg-cream-50 border border-champagne-300/80 rounded-lg p-0.5">
+              <button
+                type="button"
+                onClick={() => onUpdateQuantity(item.id, -1)}
+                aria-label={`Decrease quantity of ${item.name}`}
+                className="w-6 h-6 rounded-md hover:bg-champagne-200 text-espresso-800 flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <Minus className="w-3 h-3" />
+              </button>
+              <span className="text-xs font-bold text-espresso-900 w-5 text-center">
+                {item.quantity}
+              </span>
+              <button
+                type="button"
+                onClick={() => onUpdateQuantity(item.id, 1)}
+                disabled={item.quantity >= 20}
+                aria-label={`Increase quantity of ${item.name}`}
+                className="w-6 h-6 rounded-md hover:bg-champagne-200 disabled:opacity-30 disabled:hover:bg-cream-50 disabled:cursor-not-allowed text-espresso-800 flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <Plus className="w-3 h-3" />
+              </button>
+            </div>
+
+            {item.quantity >= 20 && (
+              <span className="text-[10px] font-semibold text-gold-700 bg-champagne-200/80 px-1.5 py-0.5 rounded animate-fade-in whitespace-nowrap">
+                Max limit (20)
+              </span>
+            )}
           </div>
 
           <span className="font-serif text-sm font-bold text-espresso-950">

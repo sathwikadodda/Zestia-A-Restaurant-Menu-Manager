@@ -6,10 +6,13 @@ export default function FoodCard({ item, inCartQuantity = 0, onAddToCart, onSele
 
   const handleQuickAdd = (e) => {
     e.stopPropagation();
+    if (inCartQuantity >= 20) return;
     onAddToCart(item, 1);
     setJustAdded(true);
     setTimeout(() => setJustAdded(false), 900);
   };
+
+  const isMaxReached = inCartQuantity >= 20;
 
   return (
     <article
@@ -87,19 +90,29 @@ export default function FoodCard({ item, inCartQuantity = 0, onAddToCart, onSele
         <button
           type="button"
           onClick={handleQuickAdd}
-          aria-label={`Add ${item.name} to cart`}
-          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-200 shadow-sm cursor-pointer active:scale-95 ${
+          disabled={isMaxReached}
+          aria-label={isMaxReached ? `${item.name} maximum limit reached` : `Add ${item.name} to cart`}
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-200 shadow-sm ${
             justAdded
-              ? 'bg-emerald-600 text-white'
+              ? 'bg-emerald-600 text-white cursor-pointer active:scale-95'
+              : isMaxReached
+              ? 'bg-champagne-200/80 text-espresso-400 border border-champagne-300 cursor-not-allowed opacity-80'
               : inCartQuantity > 0
-              ? 'bg-champagne-200 hover:bg-gold-500 hover:text-white text-espresso-900 border border-gold-400/60'
-              : 'bg-gold-500 hover:bg-gold-600 text-espresso-950 hover:text-white'
+              ? 'bg-champagne-200 hover:bg-gold-500 hover:text-white text-espresso-900 border border-gold-400/60 cursor-pointer active:scale-95'
+              : 'bg-gold-500 hover:bg-gold-600 text-espresso-950 hover:text-white cursor-pointer active:scale-95'
           }`}
         >
           {justAdded ? (
             <>
               <Check className="w-3.5 h-3.5" />
               <span>Added!</span>
+            </>
+          ) : isMaxReached ? (
+            <>
+              <span className="w-4 h-4 rounded-full bg-espresso-700 text-gold-300 text-[10px] flex items-center justify-center font-bold">
+                20
+              </span>
+              <span>Max</span>
             </>
           ) : inCartQuantity > 0 ? (
             <>

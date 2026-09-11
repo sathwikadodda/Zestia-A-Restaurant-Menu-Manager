@@ -6,6 +6,7 @@ import FoodCard from './components/FoodCard.jsx';
 import FoodDetails from './components/FoodDetails.jsx';
 import Cart from './components/Cart.jsx';
 import OrderConfirmation from './components/OrderConfirmation.jsx';
+import BillConfirmation from './components/BillConfirmation.jsx';
 import EmptyState from './components/EmptyState.jsx';
 import LoadingState from './components/LoadingState.jsx';
 import ErrorState from './components/ErrorState.jsx';
@@ -16,6 +17,8 @@ import { useCart } from './hooks/useCart.js';
 import { ShoppingBag, Sparkles, Utensils } from 'lucide-react';
 
 const TABLE_STORAGE_KEY = 'zestia-table-number';
+const SESSION_ORDERS_KEY = 'zestia_session_orders';
+const COMPLETED_BILLS_KEY = 'zestia_completed_bills';
 
 export default function App() {
   // Table state initialized with localStorage persistence (no auto-selection on first visit)
@@ -54,6 +57,33 @@ export default function App() {
   const [selectedFood, setSelectedFood] = useState(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [orderDetails, setOrderDetails] = useState(null);
+  const [billDetails, setBillDetails] = useState(null);
+  const [isRequestingBill, setIsRequestingBill] = useState(false);
+
+  // Placed orders for current dining session (persisted in localStorage)
+  const [sessionOrders, setSessionOrders] = useState(() => {
+    try {
+      const stored = localStorage.getItem(SESSION_ORDERS_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to parse session orders from localStorage:', e);
+    }
+    return [];
+  });
+
+  // Sync session orders to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(SESSION_ORDERS_KEY, JSON.stringify(sessionOrders));
+    } catch (e) {
+      console.warn('Failed to persist session orders:', e);
+    }
+  }, [sessionOrders]);
 
   // Toast feedback state
   const [toast, setToast] = useState({ visible: false, message: '' });
@@ -71,6 +101,15 @@ export default function App() {
     tax,
     grandTotal
   } = useCart();
+
+  // Active dining session computations
+  const sessionPlacedTotal = useMemo(() => {
+    return sessionOrders.reduce((sum, order) => sum + (order.grandTotal || 0), 0);
+  }, [sessionOrders]);
+
+  const hasActiveSession = Boolean(
+    isValidTable(tableNumber) && (sessionOrders.length > 0 || cartItems.length > 0)
+  );
 
   const showToast = useCallback((message) => {
     setToast({ visible: true, message });
@@ -98,10 +137,23 @@ export default function App() {
     loadMenu();
   }, [loadMenu]);
 
-  // Handle adding items to cart with toast notification
+  // Handle adding items to cart with toast notification & 20 max quantity check
   const handleAddToCart = (item, quantity = 1) => {
-    addToCart(item, quantity);
-    showToast(`Added ${quantity > 1 ? `${quantity}x ` : ''}${item.name} to cart`);
+    const currentQty = getItemQuantity(item.id);
+    if (currentQty >= 20) {
+      showToast(`Maximum limit reached: 20 per item for ${item.name}`);
+      return;
+    }
+
+    const maxAddable = 20 - currentQty;
+    const toAdd = Math.min(quantity, maxAddable);
+    addToCart(item, toAdd);
+
+    if (quantity > maxAddable) {
+      showToast(`Added ${toAdd}x ${item.name} (reached max limit of 20)`);
+    } else {
+      showToast(`Added ${toAdd > 1 ? `${toAdd}x ` : ''}${item.name} to cart`);
+    }
   };
 
   // Handle Table Selection
@@ -137,9 +189,71 @@ export default function App() {
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
+    setSessionOrders(prev => [...prev, snapshot]);
     setOrderDetails(snapshot);
     clearCart();
     setIsCartOpen(false);
+  };
+
+  // Request Bill flow
+  const handleRequestBill = () => {
+    if (isRequestingBill) return;
+
+    if (!isValidTable(tableNumber)) {
+      showToast('Please select your table before requesting the bill.');
+      setIsTableSelectorOpen(true);
+      return;
+    }
+
+    if (!hasActiveSession) {
+      showToast('No active orders or items to request a bill for this table.');
+      return;
+    }
+
+    setIsRequestingBill(true);
+
+    const totalAmount = sessionPlacedTotal + grandTotal;
+    const totalRounds = sessionOrders.length + (cartItems.length > 0 ? 1 : 0);
+    const requestedTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    const billRecord = {
+      id: `#BILL-${Math.floor(1000 + Math.random() * 9000)}`,
+      tableNumber,
+      roundsCount: totalRounds,
+      sessionOrders: [...sessionOrders],
+      unplacedCartItems: [...cartItems],
+      sessionTotal: totalAmount,
+      requestedAt: requestedTime,
+      createdAt: new Date().toISOString()
+    };
+
+    // Archive bill record to localStorage (mock persistence)
+    try {
+      const existing = JSON.parse(localStorage.getItem(COMPLETED_BILLS_KEY) || '[]');
+      existing.push(billRecord);
+      localStorage.setItem(COMPLETED_BILLS_KEY, JSON.stringify(existing));
+    } catch (e) {
+      console.warn('Failed to archive bill request:', e);
+    }
+
+    // UI feedback delay: prevents double click, clears active session state, opens confirmation modal
+    setTimeout(() => {
+      clearCart();
+      setSessionOrders([]);
+      try {
+        localStorage.removeItem(SESSION_ORDERS_KEY);
+      } catch (e) {}
+
+      setIsCartOpen(false);
+      setOrderDetails(null);
+      setBillDetails({
+        tableNumber,
+        roundsCount: totalRounds,
+        sessionTotal: totalAmount,
+        time: requestedTime
+      });
+      setIsRequestingBill(false);
+    }, 600);
   };
 
   const handleBackToMenu = () => {
@@ -322,6 +436,7 @@ export default function App() {
       {selectedFood && (
         <FoodDetails
           item={selectedFood}
+          inCartQuantity={getItemQuantity(selectedFood.id)}
           onClose={() => setSelectedFood(null)}
           onAddToCart={handleAddToCart}
         />
@@ -343,12 +458,25 @@ export default function App() {
           showToast('Please select your table before placing the order.');
           setIsTableSelectorOpen(true);
         }}
+        onRequestBill={handleRequestBill}
+        hasActiveSession={hasActiveSession}
+        sessionOrdersCount={sessionOrders.length}
+        sessionTotal={sessionPlacedTotal}
+        isRequestingBill={isRequestingBill}
       />
 
       {orderDetails && (
         <OrderConfirmation
           orderDetails={orderDetails}
           onBackToMenu={handleBackToMenu}
+          onRequestBill={handleRequestBill}
+        />
+      )}
+
+      {billDetails && (
+        <BillConfirmation
+          billDetails={billDetails}
+          onClose={() => setBillDetails(null)}
         />
       )}
 

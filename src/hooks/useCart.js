@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 
 const STORAGE_KEY = 'zestia_cart';
 
+export const MAX_ITEM_QUANTITY = 20;
+
 export function useCart() {
   const [cartItems, setCartItems] = useState(() => {
     try {
@@ -9,7 +11,11 @@ export function useCart() {
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) {
-          return parsed;
+          // Ensure all restored items also respect the 20 limit
+          return parsed.map(item => ({
+            ...item,
+            quantity: Math.min(MAX_ITEM_QUANTITY, Math.max(1, item.quantity || 1))
+          }));
         }
       }
     } catch (e) {
@@ -33,14 +39,19 @@ export function useCart() {
     setCartItems(prevItems => {
       const existingIndex = prevItems.findIndex(i => i.id === item.id);
       if (existingIndex > -1) {
+        const currentQty = prevItems[existingIndex].quantity;
+        // If already at or above 20, do not increase
+        if (currentQty >= MAX_ITEM_QUANTITY) {
+          return prevItems;
+        }
         const updated = [...prevItems];
         updated[existingIndex] = {
           ...updated[existingIndex],
-          quantity: updated[existingIndex].quantity + quantity
+          quantity: Math.min(MAX_ITEM_QUANTITY, currentQty + quantity)
         };
         return updated;
       }
-      return [...prevItems, { ...item, quantity }];
+      return [...prevItems, { ...item, quantity: Math.min(MAX_ITEM_QUANTITY, quantity) }];
     });
   }, []);
 
@@ -50,7 +61,8 @@ export function useCart() {
         .map(item => {
           if (item.id === id) {
             const newQty = item.quantity + delta;
-            return newQty > 0 ? { ...item, quantity: newQty } : null;
+            if (newQty <= 0) return null;
+            return { ...item, quantity: Math.min(MAX_ITEM_QUANTITY, newQty) };
           }
           return item;
         })
