@@ -26,10 +26,10 @@ export default function TableSelector({
     }
   }, [currentTable, isOpen]);
 
-  // Support ESC to close
+  // Support ESC to close only when changing an already selected table
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape' && onClose) {
+      if (e.key === 'Escape' && currentTable && onClose) {
         onClose();
       }
     };
@@ -37,7 +37,7 @@ export default function TableSelector({
       window.addEventListener('keydown', handleKeyDown);
     }
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, currentTable, onClose]);
 
   if (!isOpen) return null;
 
@@ -48,20 +48,26 @@ export default function TableSelector({
     }
   };
 
+  const isFirstVisit = !currentTable;
+
   return (
     <div
       role="dialog"
       aria-modal="true"
       aria-labelledby="table-modal-title"
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-espresso-950/60 backdrop-blur-sm animate-fade-in"
-      onClick={onClose}
+      onClick={() => {
+        if (!isFirstVisit && onClose) {
+          onClose();
+        }
+      }}
     >
       <div
         className="relative w-full max-w-sm bg-cream-50 rounded-2xl shadow-modal border border-champagne-300 p-5 sm:p-6 animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Close Button */}
-        {onClose && (
+        {/* Close Button (only when modifying an already selected table) */}
+        {!isFirstVisit && onClose && (
           <button
             type="button"
             onClick={onClose}
@@ -73,12 +79,12 @@ export default function TableSelector({
         )}
 
         {/* Modal Header */}
-        <div className="mb-4">
+        <div className="mb-4 text-center">
           <h2
             id="table-modal-title"
             className="font-serif text-xl font-bold text-espresso-900"
           >
-            Select Table
+            Select Your Table
           </h2>
         </div>
 
@@ -92,7 +98,7 @@ export default function TableSelector({
               className="w-full appearance-none px-4 py-2.5 rounded-xl bg-champagne-100/80 hover:bg-champagne-100 focus:bg-cream-50 border border-champagne-300 text-espresso-900 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-gold-500/50 transition-all cursor-pointer pr-10"
             >
               <option value="" disabled>
-                — Select Table (01 - 20) —
+                Select Table
               </option>
               {TABLE_OPTIONS.map((table) => (
                 <option key={table} value={table} className="text-espresso-900 bg-cream-50">
@@ -106,7 +112,7 @@ export default function TableSelector({
           </div>
 
           <div className="flex gap-2 pt-1">
-            {onClose && (
+            {!isFirstVisit && onClose && (
               <button
                 type="button"
                 onClick={onClose}
@@ -122,7 +128,7 @@ export default function TableSelector({
               className="flex-1 py-2.5 px-4 rounded-xl bg-gold-500 hover:bg-gold-600 disabled:bg-champagne-200 disabled:text-espresso-400 text-espresso-950 hover:text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Check className="w-3.5 h-3.5" />
-              <span>Confirm</span>
+              <span>Continue</span>
             </button>
           </div>
         </form>

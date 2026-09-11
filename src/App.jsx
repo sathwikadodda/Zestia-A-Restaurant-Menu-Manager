@@ -26,12 +26,19 @@ export default function App() {
         return stored;
       }
     } catch (e) {
-      console.warn('Failed to parse table number from localStorage:', e);
     }
     return null;
   });
 
-  const [isTableSelectorOpen, setIsTableSelectorOpen] = useState(false);
+  // Show table selection modal on first visit if no table is saved in localStorage
+  const [isTableSelectorOpen, setIsTableSelectorOpen] = useState(() => {
+    try {
+      const stored = localStorage.getItem(TABLE_STORAGE_KEY);
+      return !isValidTable(stored);
+    } catch {
+      return true;
+    }
+  });
 
   // Data loading state
   const [menu, setMenu] = useState([]);
