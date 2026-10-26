@@ -15,32 +15,33 @@ import TableSelector, { isValidTable } from './components/TableSelector.jsx';
 import { CATEGORIES, fetchMenuData } from './data/menuData.js';
 import { useCart } from './hooks/useCart.js';
 import { ShoppingBag, Sparkles, Utensils } from 'lucide-react';
+import {
+  getStoredSession,
+  saveSession,
+  clearStoredSession,
+  claimTableSession,
+  requestBillSession
+} from './lib/tableSession.js';
 
-const TABLE_STORAGE_KEY = 'zestia-table-number';
 const SESSION_ORDERS_KEY = 'zestia_session_orders';
 const COMPLETED_BILLS_KEY = 'zestia_completed_bills';
 
 export default function App() {
-  // Table state initialized with localStorage persistence (no auto-selection on first visit)
+  // Table & Session state initialized with localStorage persistence (no auto-selection on first visit)
   const [tableNumber, setTableNumber] = useState(() => {
-    try {
-      const stored = localStorage.getItem(TABLE_STORAGE_KEY);
-      if (isValidTable(stored)) {
-        return stored;
-      }
-    } catch (e) {
-    }
-    return null;
+    const stored = getStoredSession();
+    return isValidTable(stored.tableNumber) ? stored.tableNumber : null;
   });
 
-  // Show table selection modal on first visit if no table is saved in localStorage
+  const [sessionId, setSessionId] = useState(() => {
+    const stored = getStoredSession();
+    return isValidTable(stored.tableNumber) && stored.sessionId ? stored.sessionId : null;
+  });
+
+  // Show table selection modal on first visit if no valid table & session are saved in localStorage
   const [isTableSelectorOpen, setIsTableSelectorOpen] = useState(() => {
-    try {
-      const stored = localStorage.getItem(TABLE_STORAGE_KEY);
-      return !isValidTable(stored);
-    } catch {
-      return true;
-    }
+    const stored = getStoredSession();
+    return !(isValidTable(stored.tableNumber) && stored.sessionId);
   });
 
   // Data loading state
@@ -156,47 +157,95 @@ export default function App() {
     }
   };
 
-  // Handle Table Selection
-  const handleSelectTable = (selectedTable) => {
-    if (isValidTable(selectedTable)) {
+  // Handle Table Selection with Supabase RPC claim_table
+  const handleSelectTable = async (selectedTable) => {
+    if (!isValidTable(selectedTable)) {
+      return { success: false, message: 'Please select a valid table.' };
+    }
+
+    // If customer re-selects the table they already have active, simply keep it
+    if (tableNumber === selectedTable && sessionId) {
+      setIsTableSelectorOpen(false);
+      return { success: true, sessionId };
+    }
+
+    // Call Supabase claim_table RPC
+    const result = await claimTableSession(selectedTable);
+
+    if (result.success) {
       setTableNumber(selectedTable);
-      try {
-        localStorage.setItem(TABLE_STORAGE_KEY, selectedTable);
-      } catch (e) {
-        console.warn('Failed to persist table number:', e);
-      }
+      setSessionId(result.sessionId);
+      saveSession(selectedTable, result.sessionId);
       setIsTableSelectorOpen(false);
       showToast(`Dining at ${selectedTable}`);
+      return { success: true, sessionId: result.sessionId };
+    } else {
+      // Table is occupied or RPC failed; keep current table and session unchanged
+      return {
+        success: false,
+        message: result.message || `${selectedTable} is currently in use. Please select another table.`
+      };
     }
   };
 
   // Order Placement flow
-  const handlePlaceOrder = () => {
+  
+  const handlePlaceOrder = async () => {
     if (!isValidTable(tableNumber)) {
       showToast('Please select your table before placing the order.');
       setIsTableSelectorOpen(true);
       return;
     }
 
+    if (!cartItems.length) {
+      showToast('Your cart is empty.');
+      return;
+    }
+
     const generatedId = `#ZST-${Math.floor(1000 + Math.random() * 9000)}`;
+
     const snapshot = {
       orderId: generatedId,
       tableNumber,
+      sessionId,
       items: [...cartItems],
       subtotal,
       tax,
       grandTotal,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      timestamp: new Date().toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit'
+      })
     };
 
-    setSessionOrders(prev => [...prev, snapshot]);
-    setOrderDetails(snapshot);
-    clearCart();
-    setIsCartOpen(false);
+    try {
+      const response = await fetch('http://localhost:5000/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(snapshot)
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        showToast(result.message || 'Could not save your order.');
+        return;
+      }
+
+      setSessionOrders(prev => [...prev, snapshot]);
+      setOrderDetails(snapshot);
+      clearCart();
+      setIsCartOpen(false);
+      showToast('Order saved successfully!');
+    } catch (error) {
+      console.error('Order placement failed:', error);
+      showToast('Cannot connect to the Zestia server.');
+    }
   };
 
-  // Request Bill flow
-  const handleRequestBill = () => {
+
+  // Request Bill flow with Supabase RPC request_bill
+  const handleRequestBill = async () => {
     if (isRequestingBill) return;
 
     if (!isValidTable(tableNumber)) {
@@ -212,6 +261,24 @@ export default function App() {
 
     setIsRequestingBill(true);
 
+    // Call Supabase RPC request_bill
+    let rpcSuccess = true;
+    let rpcMessage = '';
+
+    if (sessionId) {
+      const billResult = await requestBillSession(sessionId);
+      if (!billResult.success) {
+        rpcSuccess = false;
+        rpcMessage = billResult.message;
+      }
+    }
+
+    if (!rpcSuccess) {
+      showToast(rpcMessage || 'Unable to request bill from server. Please try again or inform staff.');
+      setIsRequestingBill(false);
+      return;
+    }
+
     const totalAmount = sessionPlacedTotal + grandTotal;
     const totalRounds = sessionOrders.length + (cartItems.length > 0 ? 1 : 0);
     const requestedTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -219,6 +286,7 @@ export default function App() {
     const billRecord = {
       id: `#BILL-${Math.floor(1000 + Math.random() * 9000)}`,
       tableNumber,
+      sessionId,
       roundsCount: totalRounds,
       sessionOrders: [...sessionOrders],
       unplacedCartItems: [...cartItems],
@@ -236,24 +304,29 @@ export default function App() {
       console.warn('Failed to archive bill request:', e);
     }
 
-    // UI feedback delay: prevents double click, clears active session state, opens confirmation modal
-    setTimeout(() => {
-      clearCart();
-      setSessionOrders([]);
-      try {
-        localStorage.removeItem(SESSION_ORDERS_KEY);
-      } catch (e) {}
+    // Clear active customer-side session and cart
+    clearCart();
+    setSessionOrders([]);
+    clearStoredSession();
+    try {
+      localStorage.removeItem(SESSION_ORDERS_KEY);
+    } catch (e) {}
 
-      setIsCartOpen(false);
-      setOrderDetails(null);
-      setBillDetails({
-        tableNumber,
-        roundsCount: totalRounds,
-        sessionTotal: totalAmount,
-        time: requestedTime
-      });
-      setIsRequestingBill(false);
-    }, 600);
+    const releasedTable = tableNumber;
+    setTableNumber(null);
+    setSessionId(null);
+    setIsCartOpen(false);
+    setOrderDetails(null);
+
+    // Show confirmation modal
+    setBillDetails({
+      tableNumber: releasedTable,
+      roundsCount: totalRounds,
+      sessionTotal: totalAmount,
+      time: requestedTime
+    });
+
+    setIsRequestingBill(false);
   };
 
   const handleBackToMenu = () => {
@@ -476,7 +549,10 @@ export default function App() {
       {billDetails && (
         <BillConfirmation
           billDetails={billDetails}
-          onClose={() => setBillDetails(null)}
+          onClose={() => {
+            setBillDetails(null);
+            setIsTableSelectorOpen(true);
+          }}
         />
       )}
 

@@ -1154,9 +1154,13 @@ badge: "Refreshing"
 
 
 export const fetchMenuData = async () => {
+  const response = await fetch("http://localhost:5000/api/menu");
 
-return MENU_ITEMS;
+  if (!response.ok) {
+    throw new Error("Failed to fetch menu from MongoDB");
+  }
 
+  return response.json();
 };
 
 
